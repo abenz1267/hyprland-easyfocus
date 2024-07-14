@@ -1,0 +1,15 @@
+window {
+  font-family: monospace;
+}
+
+window box {
+  background: #c8c093;
+}
+
+window label {
+  font-size: 20px;
+  color: #1f1f28;
+}
+
+.current {
+}
