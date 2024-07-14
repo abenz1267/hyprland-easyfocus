@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{cmp::Ordering, collections::HashMap};
 
 use config::Config;
 use gtk::{
@@ -78,15 +78,25 @@ fn get_windows(ignore_workspace: bool) -> (Vec<Window>, i32) {
     let active = Client::get_active().unwrap().unwrap();
     let workspace = active.workspace.id;
 
-    let clients = Clients::get().unwrap().into_iter();
+    let clients = Clients::get().unwrap();
+    let iter = clients.into_iter();
 
     if ignore_workspace {
-        return (clients.map(Window::from).collect(), workspace);
+        let mut windows = iter.map(Window::from).collect::<Vec<Window>>();
+        windows.sort_by(
+            |a, b| match (a.workspace == workspace, b.workspace == workspace) {
+                (true, true) => Ordering::Equal,
+                (true, false) => Ordering::Less,
+                (false, true) => Ordering::Greater,
+                (false, false) => a.workspace.cmp(&b.workspace),
+            },
+        );
+
+        return (windows, workspace);
     }
 
     (
-        clients
-            .filter(|w| w.workspace.id == workspace)
+        iter.filter(|w| w.workspace.id == workspace)
             .map(Window::from)
             .collect(),
         workspace,
