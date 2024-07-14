@@ -27,7 +27,8 @@ Default `config.json`:
   "cycle_before": 3,
   "label_position": "Center",
   "box_size": 30,
-  "ignore_current": true
+  "ignore_current": true,
+  "dim_inactive": true
 }
 ```
 
@@ -57,6 +58,7 @@ window label {
 - `label_position`: The position of the labels. Can be `TopCenter`, `BottomCenter`, `TopLeft`, `BottomLeft`, `TopRight`, `BottomRight`, or `Center`.
 - `box_size`: The size of the boxes around the labels.
 - `ignore_current`: If true, the current window will not get a label.
+- `dim_inactive`: If true, inactive windows will be dimmed.
 
 ## Keybindings
 
