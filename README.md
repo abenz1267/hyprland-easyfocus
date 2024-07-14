@@ -7,6 +7,7 @@ A hyprland window switcher inspired by [sway-easyfocus](https://github.com/edzde
 - focus windows with predefined labels
 - handles fullscreen windows
 - allows cycling before X amount of windows to save keystrokes
+- display labels for all windows if configured
 
 ## Installation
 
