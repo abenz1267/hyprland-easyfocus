@@ -3,5 +3,6 @@
   "cycle_before": 3,
   "label_position": "Center",
   "box_size": 30,
-  "ignore_current": true
+  "ignore_current": true,
+  "dim_inactive": true
 }

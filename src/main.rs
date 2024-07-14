@@ -11,6 +11,7 @@ use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use hyprland::{
     data::{Client, Clients},
     dispatch::{CycleDirection, Dispatch, DispatchType, FullscreenType, WindowIdentifier},
+    keyword::Keyword,
     shared::{Address, HyprData, HyprDataActiveOptional},
 };
 use serde::{Deserialize, Serialize};
@@ -41,6 +42,7 @@ struct AppConfig {
     label_position: Position,
     box_size: i32,
     ignore_current: bool,
+    dim_inactive: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -108,6 +110,8 @@ fn handle_keypress(key_to_window_id: &HashMap<char, Address>, key: &str, labels:
 }
 
 fn setup_ui(app: &Application) {
+    let dim_inactive_initial = Keyword::get("decoration:dim_inactive").unwrap().value;
+
     let mut config_file = dirs::config_dir().unwrap();
     config_file.push("hyprland-easyfocus");
     config_file.push("config.json");
@@ -128,6 +132,10 @@ fn setup_ui(app: &Application) {
         .try_deserialize::<AppConfig>()
         .unwrap();
 
+    if config.dim_inactive {
+        Keyword::set("decoration:dim_inactive", 1).unwrap();
+    }
+
     let windows = get_win_workspace();
 
     if windows.is_empty() {
@@ -139,6 +147,8 @@ fn setup_ui(app: &Application) {
     if windows.len() < config.cycle_before {
         Dispatch::call(DispatchType::CycleWindow(CycleDirection::Next))
             .expect("failed to focus window");
+
+        Keyword::set("decoration:dim_inactive", dim_inactive_initial.clone()).unwrap();
 
         app.quit();
         return;
@@ -250,6 +260,8 @@ fn setup_ui(app: &Application) {
         let success = handle_keypress(&assignments, &key.name().unwrap(), config.labels.clone());
 
         if success {
+            Keyword::set("decoration:dim_inactive", dim_inactive_initial.clone()).unwrap();
+
             win_copy.close();
 
             if fullscreen_mode != -1 {
