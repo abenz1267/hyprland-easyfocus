@@ -153,9 +153,11 @@ fn setup_ui(app: &Application) {
         panic!("No windows");
     }
 
+    let has_on_other_workspace = windows.iter().any(|w| w.workspace != active_workspace);
+
     setup_css();
 
-    if windows.len() < config.cycle_before {
+    if windows.len() < config.cycle_before && !has_on_other_workspace {
         Dispatch::call(DispatchType::CycleWindow(CycleDirection::Next))
             .expect("failed to focus window");
 
