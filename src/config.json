@@ -1,8 +1,10 @@
 {
-  "labels": "asdfjkl;gh",
+  "labels": "asdfjkl;ghqweruioptyzxcvm,./bn",
   "cycle_before": 3,
   "label_position": "Center",
   "box_size": 30,
   "ignore_current": true,
-  "dim_inactive": true
+  "dim_inactive": true,
+  "ignore_workspace": true,
+  "workspace_label_width": 30
 }

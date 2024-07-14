@@ -23,12 +23,14 @@ Default `config.json`:
 
 ```json
 {
-  "labels": "asdfjkl;gh",
+  "labels": "asdfjkl;ghqweruioptyzxcvm,./bn",
   "cycle_before": 3,
   "label_position": "Center",
   "box_size": 30,
   "ignore_current": true,
-  "dim_inactive": true
+  "dim_inactive": true,
+  "ignore_workspace": true,
+  "workspace_label_width": 30
 }
 ```
 
@@ -37,16 +39,28 @@ Default `style.css`:
 ```css
 window {
   font-family: monospace;
-  background: rgba(0, 0, 0, 0);
+  background: rgba(29, 31, 33, 0);
 }
 
 window box {
   background: #c8c093;
+  font-size: 30px;
 }
 
 window label {
-  font-size: 20px;
   color: #1f1f28;
+}
+
+window box.workspaces box {
+  font-size: 20px;
+}
+
+.workspaces .label {
+  color: #16161d;
+  font-weight: bold;
+}
+
+.workspaces .title {
 }
 
 .current {
@@ -59,6 +73,8 @@ window label {
 - `box_size`: The size of the boxes around the labels.
 - `ignore_current`: If true, the current window will not get a label.
 - `dim_inactive`: If true, inactive windows will be dimmed.
+- `ignore_workspace`: If true, all windows will be considered.
+- `workspace_label_width`: The width of the activation-label in the workspace-view.
 
 ## Keybindings
 

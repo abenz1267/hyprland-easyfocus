@@ -18,6 +18,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone)]
 struct Window {
+    pub workspace: i32,
+    pub title: String,
     pub address: Address,
     pub position: (i32, i32),
     pub size: (i32, i32),
@@ -27,6 +29,8 @@ struct Window {
 impl From<Client> for Window {
     fn from(client: Client) -> Self {
         Self {
+            workspace: client.workspace.id,
+            title: client.title,
             address: client.address,
             position: ((client.at.0) as i32, (client.at.1) as i32),
             size: (client.size.0 as i32, client.size.1 as i32),
@@ -43,6 +47,8 @@ struct AppConfig {
     box_size: i32,
     ignore_current: bool,
     dim_inactive: bool,
+    workspace_label_width: i32,
+    ignore_workspace: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -68,18 +74,23 @@ fn main() {
     app.run();
 }
 
-fn get_win_workspace() -> Vec<Window> {
+fn get_windows(ignore_workspace: bool) -> (Vec<Window>, i32) {
     let active = Client::get_active().unwrap().unwrap();
     let workspace = active.workspace.id;
 
-    let windows: Vec<Window> = Clients::get()
-        .unwrap()
-        .into_iter()
-        .filter(|w| w.workspace.id == workspace)
-        .map(Window::from)
-        .collect();
+    let clients = Clients::get().unwrap().into_iter();
 
-    windows
+    if ignore_workspace {
+        return (clients.map(Window::from).collect(), workspace);
+    }
+
+    (
+        clients
+            .filter(|w| w.workspace.id == workspace)
+            .map(Window::from)
+            .collect(),
+        workspace,
+    )
 }
 
 fn focus_window(win_add: &Address) {
@@ -136,7 +147,7 @@ fn setup_ui(app: &Application) {
         Keyword::set("decoration:dim_inactive", 1).unwrap();
     }
 
-    let windows = get_win_workspace();
+    let (windows, active_workspace) = get_windows(config.ignore_workspace);
 
     if windows.is_empty() {
         panic!("No windows");
@@ -187,6 +198,12 @@ fn setup_ui(app: &Application) {
     }
 
     let fixed = gtk::Fixed::new();
+    let workspace_wrapper = gtk::Box::new(gtk::Orientation::Vertical, 0);
+
+    if config.ignore_workspace {
+        workspace_wrapper.add_css_class("workspaces");
+        fixed.put(&workspace_wrapper, 0.0, 0.0);
+    }
 
     let mut assignments = HashMap::new();
 
@@ -194,19 +211,6 @@ fn setup_ui(app: &Application) {
         if config.ignore_current && win.is_current {
             return;
         }
-
-        let label = gtk::Label::new(Some(""));
-        label.set_hexpand(true);
-        label.set_vexpand(true);
-        label.set_hexpand_set(true);
-        label.set_vexpand_set(true);
-        label.set_halign(gtk::Align::Center);
-        label.set_valign(gtk::Align::Center);
-        label.set_single_line_mode(true);
-
-        let wrapper = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-        wrapper.set_size_request(config.box_size, config.box_size);
-        wrapper.append(&label);
 
         let mut char = chars.next().unwrap();
 
@@ -216,40 +220,70 @@ fn setup_ui(app: &Application) {
             char = char.to_uppercase().next().unwrap();
         }
 
-        label.set_text(char.to_string().as_str());
+        if win.workspace != active_workspace {
+            let label_label = gtk::Label::new(Some(char.to_string().as_str()));
+            label_label.add_css_class("label");
+            label_label.set_xalign(0.5);
+            label_label.set_size_request(config.workspace_label_width, -1);
 
-        let box_offset_half = f64::from(config.box_size / 2);
+            let title_label = gtk::Label::new(Some(win.title.as_str()));
+            title_label.add_css_class("title");
+            title_label.set_hexpand(true);
+            title_label.set_hexpand_set(true);
+            title_label.set_xalign(0.0);
 
-        let position = match config.label_position {
-            Position::TopCenter => (
-                f64::from(win.position.0 + win.size.0 / 2) - box_offset_half,
-                f64::from(win.position.1),
-            ),
-            Position::BottomCenter => (
-                f64::from(win.position.0 + win.size.0 / 2) - box_offset_half,
-                f64::from(win.position.1 - config.box_size + win.size.1),
-            ),
-            Position::TopLeft => (f64::from(win.position.0), f64::from(win.position.1)),
-            Position::BottomLeft => (
-                f64::from(win.position.0),
-                f64::from(win.position.1 + win.size.1 - config.box_size),
-            ),
-            Position::TopRight => (
-                f64::from(win.position.0 + win.size.0 - config.box_size),
-                f64::from(win.position.1),
-            ),
-            Position::BottomRight => (f64::from(win.position.0), f64::from(win.position.1)),
-            Position::Center => (
-                f64::from(win.position.0 + win.size.0 / 2) - box_offset_half,
-                f64::from(win.position.1 + win.size.1 / 2) - box_offset_half,
-            ),
-        };
+            let wrapper = gtk::Box::new(gtk::Orientation::Horizontal, 0);
 
-        // position labels
-        fixed.put(&wrapper, position.0, position.1);
+            wrapper.append(&label_label);
+            wrapper.append(&title_label);
 
-        if win.is_current {
-            wrapper.add_css_class("current");
+            workspace_wrapper.append(&wrapper);
+        } else {
+            let label = gtk::Label::new(Some(char.to_string().as_str()));
+            label.set_hexpand(true);
+            label.set_vexpand(true);
+            label.set_hexpand_set(true);
+            label.set_vexpand_set(true);
+            label.set_halign(gtk::Align::Center);
+            label.set_valign(gtk::Align::Center);
+            label.set_single_line_mode(true);
+
+            let wrapper = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+            wrapper.set_size_request(config.box_size, config.box_size);
+            wrapper.append(&label);
+
+            let box_offset_half = f64::from(config.box_size / 2);
+
+            let position = match config.label_position {
+                Position::TopCenter => (
+                    f64::from(win.position.0 + win.size.0 / 2) - box_offset_half,
+                    f64::from(win.position.1),
+                ),
+                Position::BottomCenter => (
+                    f64::from(win.position.0 + win.size.0 / 2) - box_offset_half,
+                    f64::from(win.position.1 - config.box_size + win.size.1),
+                ),
+                Position::TopLeft => (f64::from(win.position.0), f64::from(win.position.1)),
+                Position::BottomLeft => (
+                    f64::from(win.position.0),
+                    f64::from(win.position.1 + win.size.1 - config.box_size),
+                ),
+                Position::TopRight => (
+                    f64::from(win.position.0 + win.size.0 - config.box_size),
+                    f64::from(win.position.1),
+                ),
+                Position::BottomRight => (f64::from(win.position.0), f64::from(win.position.1)),
+                Position::Center => (
+                    f64::from(win.position.0 + win.size.0 / 2) - box_offset_half,
+                    f64::from(win.position.1 + win.size.1 / 2) - box_offset_half,
+                ),
+            };
+
+            fixed.put(&wrapper, position.0, position.1);
+
+            if win.is_current {
+                wrapper.add_css_class("current");
+            }
         }
     });
 

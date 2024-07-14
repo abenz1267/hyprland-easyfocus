@@ -1,15 +1,27 @@
 window {
   font-family: monospace;
-  background: rgba(0, 0, 0, 0);
+  background: rgba(29, 31, 33, 0);
 }
 
 window box {
   background: #c8c093;
+  font-size: 30px;
 }
 
 window label {
-  font-size: 20px;
   color: #1f1f28;
+}
+
+window box.workspaces box {
+  font-size: 18px;
+}
+
+.workspaces .label {
+  color: #16161d;
+  font-weight: bold;
+}
+
+.workspaces .title {
 }
 
 .current {
