@@ -14,6 +14,9 @@ A hyprland window switcher inspired by [sway-easyfocus](https://github.com/edzde
 ```bash
 // Arch
 yay -S hyprland-easyfocus
+
+// if installing gtk4-layer-shell fails try this
+yay -S --mflags '--nocheck' hyprland-easyfocus
 ```
 
 ## Config
