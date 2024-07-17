@@ -75,8 +75,13 @@ fn main() {
 }
 
 fn get_windows(ignore_workspace: bool) -> (Vec<Window>, i32) {
-    let active = Client::get_active().unwrap().unwrap();
-    let workspace = active.workspace.id;
+    let workspace = match Client::get_active() {
+        Ok(option) => match option {
+            Some(active) => active.workspace.id,
+            None => -1,
+        },
+        Err(_) => -1,
+    };
 
     let clients = Clients::get().unwrap();
     let iter = clients.into_iter();
@@ -177,16 +182,18 @@ fn setup_ui(app: &Application) {
         return;
     }
 
-    let active = Client::get_active().unwrap().unwrap();
+    let fullscreen_mode = match Client::get_active() {
+        Ok(option) => match option {
+            Some(active) => {
+                Dispatch::call(DispatchType::ToggleFullscreen(FullscreenType::NoParam))
+                    .expect("failed to toggle fullscreen");
 
-    let mut fullscreen_mode = -1;
-
-    if active.fullscreen {
-        fullscreen_mode = active.fullscreen_mode;
-
-        Dispatch::call(DispatchType::ToggleFullscreen(FullscreenType::NoParam))
-            .expect("failed to toggle fullscreen");
-    }
+                active.fullscreen_mode
+            }
+            None => -1,
+        },
+        Err(_) => -1,
+    };
 
     let mut chars = config.labels.chars();
 
