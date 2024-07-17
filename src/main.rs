@@ -20,6 +20,7 @@ use serde::{Deserialize, Serialize};
 struct Window {
     pub workspace: i32,
     pub title: String,
+    pub grouped: Vec<Box<Address>>,
     pub address: Address,
     pub position: (i32, i32),
     pub size: (i32, i32),
@@ -31,6 +32,7 @@ impl From<Client> for Window {
         Self {
             workspace: client.workspace.id,
             title: client.title,
+            grouped: client.grouped.clone(),
             address: client.address,
             position: ((client.at.0) as i32, (client.at.1) as i32),
             size: (client.size.0 as i32, client.size.1 as i32),
@@ -185,10 +187,14 @@ fn setup_ui(app: &Application) {
     let fullscreen_mode = match Client::get_active() {
         Ok(option) => match option {
             Some(active) => {
-                Dispatch::call(DispatchType::ToggleFullscreen(FullscreenType::NoParam))
-                    .expect("failed to toggle fullscreen");
+                if active.fullscreen {
+                    Dispatch::call(DispatchType::ToggleFullscreen(FullscreenType::NoParam))
+                        .expect("failed to toggle fullscreen");
 
-                active.fullscreen_mode
+                    active.fullscreen_mode
+                } else {
+                    -1
+                }
             }
             None => -1,
         },
@@ -273,7 +279,7 @@ fn setup_ui(app: &Application) {
 
             let box_offset_half = f64::from(config.box_size / 2);
 
-            let position = match config.label_position {
+            let mut position = match config.label_position {
                 Position::TopCenter => (
                     f64::from(win.position.0 + win.size.0 / 2) - box_offset_half,
                     f64::from(win.position.1),
@@ -291,12 +297,38 @@ fn setup_ui(app: &Application) {
                     f64::from(win.position.0 + win.size.0 - config.box_size),
                     f64::from(win.position.1),
                 ),
-                Position::BottomRight => (f64::from(win.position.0), f64::from(win.position.1)),
+                Position::BottomRight => (
+                    f64::from(win.position.0 + win.size.0 - config.box_size),
+                    f64::from(win.position.1 + win.size.1 - config.box_size),
+                ),
                 Position::Center => (
                     f64::from(win.position.0 + win.size.0 / 2) - box_offset_half,
                     f64::from(win.position.1 + win.size.1 / 2) - box_offset_half,
                 ),
             };
+
+            if win.grouped.len() > 1 {
+                let index = win
+                    .grouped
+                    .iter()
+                    .position(|x| x.as_ref() == &win.address)
+                    .unwrap();
+
+                let window_base = win.size.0 / win.grouped.len() as i32;
+
+                position.0 = match config.label_position {
+                    Position::TopCenter | Position::Center | Position::BottomCenter => {
+                        f64::from(win.position.0 + (index as i32) * window_base + window_base / 2)
+                    }
+                    Position::TopLeft | Position::BottomLeft => {
+                        f64::from(win.position.0 + (index as i32) * window_base)
+                    }
+                    Position::TopRight | Position::BottomRight => f64::from(
+                        win.position.0 + window_base - config.box_size
+                            + (index as i32) * window_base,
+                    ),
+                };
+            }
 
             fixed.put(&wrapper, position.0, position.1);
 
