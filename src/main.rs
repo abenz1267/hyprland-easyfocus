@@ -9,7 +9,7 @@ use gtk::{
 };
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use hyprland::{
-    data::{Client, Clients},
+    data::{Client, Clients, FullscreenMode},
     dispatch::{CycleDirection, Dispatch, DispatchType, FullscreenType, WindowIdentifier},
     keyword::Keyword,
     shared::{Address, HyprData, HyprDataActiveOptional},
@@ -187,18 +187,18 @@ fn setup_ui(app: &Application) {
     let fullscreen_mode = match Client::get_active() {
         Ok(option) => match option {
             Some(active) => {
-                if active.fullscreen {
+                if active.fullscreen != FullscreenMode::None {
                     Dispatch::call(DispatchType::ToggleFullscreen(FullscreenType::NoParam))
                         .expect("failed to toggle fullscreen");
 
-                    active.fullscreen_mode
+                    Some(active.fullscreen)
                 } else {
-                    -1
+                    None
                 }
             }
-            None => -1,
+            None => None,
         },
-        Err(_) => -1,
+        Err(_) => None,
     };
 
     let mut chars = config.labels.chars();
@@ -349,10 +349,11 @@ fn setup_ui(app: &Application) {
 
             win_copy.close();
 
-            if fullscreen_mode != -1 {
+            if fullscreen_mode.is_some() {
                 let fullscreen_type = match fullscreen_mode {
-                    0 => FullscreenType::Real,
-                    1 => FullscreenType::Maximize,
+                    Some(FullscreenMode::Fullscreen) => FullscreenType::Real,
+                    Some(FullscreenMode::Maximized) => FullscreenType::Maximize,
+                    Some(FullscreenMode::MaximizedFullscreen) => FullscreenType::NoParam,
                     _ => FullscreenType::NoParam,
                 };
 
