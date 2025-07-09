@@ -73,6 +73,11 @@ fn main() {
         setup_ui(app);
     });
 
+    // Handle the case where we want to keep the service running
+    // The service will stay alive until explicitly terminated
+    app.set_inactivity_timeout(0); // Keep service running indefinitely
+    let _ = app.hold(); // Keep the application alive even when no windows are open
+
     app.run();
 }
 
@@ -167,7 +172,10 @@ fn setup_ui(app: &Application) {
     let (windows, active_workspace) = get_windows(config.ignore_workspace);
 
     if windows.is_empty() {
-        panic!("No windows");
+        eprintln!("No windows found");
+        // Don't panic or quit the service, just return
+        Keyword::set("decoration:dim_inactive", dim_inactive_initial.clone()).unwrap();
+        return;
     }
 
     let has_on_other_workspace = windows.iter().any(|w| w.workspace != active_workspace);
@@ -180,7 +188,7 @@ fn setup_ui(app: &Application) {
 
         Keyword::set("decoration:dim_inactive", dim_inactive_initial.clone()).unwrap();
 
-        app.quit();
+        // Don't quit the service, just return
         return;
     }
 
@@ -206,10 +214,10 @@ fn setup_ui(app: &Application) {
     let win = gtk::ApplicationWindow::new(app);
 
     win.init_layer_shell();
-    win.set_namespace("easyfocus-hyprland");
+    win.set_namespace("hyprland-easyfocus");
     win.set_exclusive_zone(-1);
     win.set_layer(Layer::Overlay);
-    win.set_keyboard_mode(KeyboardMode::OnDemand);
+    win.set_keyboard_mode(KeyboardMode::Exclusive);
 
     let anchors = [
         (Edge::Left, true),
@@ -347,8 +355,6 @@ fn setup_ui(app: &Application) {
         if success {
             Keyword::set("decoration:dim_inactive", dim_inactive_initial.clone()).unwrap();
 
-            win_copy.close();
-
             if fullscreen_mode.is_some() {
                 let fullscreen_type = match fullscreen_mode {
                     Some(FullscreenMode::Fullscreen) => FullscreenType::Real,
@@ -360,6 +366,13 @@ fn setup_ui(app: &Application) {
                 Dispatch::call(DispatchType::ToggleFullscreen(fullscreen_type))
                     .expect("failed to toggle fullscreen");
             }
+
+            let _ = win_copy
+                .application()
+                .expect("something went horribly wrong")
+                .hold();
+
+            win_copy.set_visible(false);
         }
 
         return glib::Propagation::Proceed;
