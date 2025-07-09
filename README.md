@@ -17,6 +17,20 @@ A hyprland window switcher inspired by [sway-easyfocus](https://github.com/edzde
 yay -S hyprland-easyfocus
 ```
 
+## Running
+
+Start it as a service:
+
+```
+hyprland-easyfocus --gapplication-service
+```
+
+Invoke with:
+
+```
+hyprland-easyfocus
+```
+
 ## Config
 
 `$XDG_CONFIG_HOME/hyprland-easyfocus/` or `$HOME/.config/hyprland-easyfocus/`.
