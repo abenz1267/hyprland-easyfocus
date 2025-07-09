@@ -362,6 +362,13 @@ fn setup_ui(win: &gtk::ApplicationWindow, config: &AppConfig) {
     let config_clone = config.clone();
 
     key_controller.connect_key_pressed(move |_, key, _, _| {
+        let _ = win_copy
+            .application()
+            .expect("something went horribly wrong")
+            .hold();
+
+        win_copy.set_visible(false);
+
         let success = handle_keypress(
             &assignments,
             &key.name().unwrap(),
@@ -382,13 +389,6 @@ fn setup_ui(win: &gtk::ApplicationWindow, config: &AppConfig) {
                 Dispatch::call(DispatchType::ToggleFullscreen(fullscreen_type))
                     .expect("failed to toggle fullscreen");
             }
-
-            let _ = win_copy
-                .application()
-                .expect("something went horribly wrong")
-                .hold();
-
-            win_copy.set_visible(false);
         }
 
         return glib::Propagation::Proceed;
