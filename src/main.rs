@@ -69,14 +69,30 @@ fn main() {
         .application_id("dev.benz.hyprland-easyfocus")
         .build();
 
+    let has_setup = std::cell::Cell::new(false);
+    let config = std::cell::RefCell::new(None);
+    let window = std::cell::RefCell::new(None);
+    let hold_guard = std::cell::RefCell::new(None);
+
     app.connect_activate(move |app| {
-        setup_ui(app);
+        if !has_setup.get() {
+            setup_css();
+            *config.borrow_mut() = Some(setup_config());
+            *window.borrow_mut() = Some(setup_window(app));
+            has_setup.set(true);
+        }
+
+        setup_ui(
+            window.borrow().as_ref().unwrap(),
+            config.borrow().as_ref().unwrap(),
+        );
     });
 
-    // Handle the case where we want to keep the service running
-    // The service will stay alive until explicitly terminated
-    app.set_inactivity_timeout(0); // Keep service running indefinitely
-    let _ = app.hold(); // Keep the application alive even when no windows are open
+    app.connect_startup(move |app| {
+        if !app.is_remote() {
+            *hold_guard.borrow_mut() = Some(app.hold());
+        }
+    });
 
     app.run();
 }
@@ -142,9 +158,7 @@ fn handle_keypress(key_to_window_id: &HashMap<char, Address>, key: &str, labels:
     return false;
 }
 
-fn setup_ui(app: &Application) {
-    let dim_inactive_initial = Keyword::get("decoration:dim_inactive").unwrap().value;
-
+fn setup_config() -> AppConfig {
     let mut config_file = dirs::config_dir().unwrap();
     config_file.push("hyprland-easyfocus");
     config_file.push("config.json");
@@ -165,6 +179,12 @@ fn setup_ui(app: &Application) {
         .try_deserialize::<AppConfig>()
         .unwrap();
 
+    config
+}
+
+fn setup_ui(win: &gtk::ApplicationWindow, config: &AppConfig) {
+    let dim_inactive_initial = Keyword::get("decoration:dim_inactive").unwrap().value;
+
     if config.dim_inactive {
         Keyword::set("decoration:dim_inactive", 1).unwrap();
     }
@@ -179,8 +199,6 @@ fn setup_ui(app: &Application) {
     }
 
     let has_on_other_workspace = windows.iter().any(|w| w.workspace != active_workspace);
-
-    setup_css();
 
     if windows.len() < config.cycle_before && !has_on_other_workspace {
         Dispatch::call(DispatchType::CycleWindow(CycleDirection::Next))
@@ -210,14 +228,6 @@ fn setup_ui(app: &Application) {
     };
 
     let mut chars = config.labels.chars();
-
-    let win = gtk::ApplicationWindow::new(app);
-
-    win.init_layer_shell();
-    win.set_namespace("hyprland-easyfocus");
-    win.set_exclusive_zone(-1);
-    win.set_layer(Layer::Overlay);
-    win.set_keyboard_mode(KeyboardMode::OnDemand);
 
     let anchors = [
         (Edge::Left, true),
@@ -349,8 +359,14 @@ fn setup_ui(app: &Application) {
     let key_controller: EventControllerKey = EventControllerKey::new();
     let win_copy = win.clone();
 
+    let config_clone = config.clone();
+
     key_controller.connect_key_pressed(move |_, key, _, _| {
-        let success = handle_keypress(&assignments, &key.name().unwrap(), config.labels.clone());
+        let success = handle_keypress(
+            &assignments,
+            &key.name().unwrap(),
+            config_clone.labels.clone(),
+        );
 
         if success {
             Keyword::set("decoration:dim_inactive", dim_inactive_initial.clone()).unwrap();
@@ -402,4 +418,16 @@ fn setup_css() {
         &css_provider,
         gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
     );
+}
+
+fn setup_window(app: &Application) -> gtk::ApplicationWindow {
+    let win = gtk::ApplicationWindow::new(app);
+
+    win.init_layer_shell();
+    win.set_namespace("hyprland-easyfocus");
+    win.set_exclusive_zone(-1);
+    win.set_layer(Layer::Overlay);
+    win.set_keyboard_mode(KeyboardMode::OnDemand);
+
+    return win;
 }
