@@ -3,6 +3,7 @@ use std::{cmp::Ordering, collections::HashMap};
 use config::Config;
 use gtk::{
     gdk::Display,
+    gio::ApplicationFlags,
     glib,
     prelude::{ApplicationExt, ApplicationExtManual, BoxExt, FixedExt, GtkWindowExt, WidgetExt},
     Application, CssProvider, EventControllerKey,
@@ -89,7 +90,7 @@ fn main() {
     });
 
     app.connect_startup(move |app| {
-        if !app.is_remote() {
+        if app.flags().contains(ApplicationFlags::IS_SERVICE) {
             *hold_guard.borrow_mut() = Some(app.hold());
         }
     });
@@ -193,7 +194,6 @@ fn setup_ui(win: &gtk::ApplicationWindow, config: &AppConfig) {
 
     if windows.is_empty() {
         eprintln!("No windows found");
-        // Don't panic or quit the service, just return
         Keyword::set("decoration:dim_inactive", dim_inactive_initial.clone()).unwrap();
         return;
     }
@@ -206,7 +206,6 @@ fn setup_ui(win: &gtk::ApplicationWindow, config: &AppConfig) {
 
         Keyword::set("decoration:dim_inactive", dim_inactive_initial.clone()).unwrap();
 
-        // Don't quit the service, just return
         return;
     }
 
@@ -228,17 +227,6 @@ fn setup_ui(win: &gtk::ApplicationWindow, config: &AppConfig) {
     };
 
     let mut chars = config.labels.chars();
-
-    let anchors = [
-        (Edge::Left, true),
-        (Edge::Right, true),
-        (Edge::Top, true),
-        (Edge::Bottom, true),
-    ];
-
-    for (anchor, state) in anchors {
-        win.set_anchor(anchor, state);
-    }
 
     let fixed = gtk::Fixed::new();
     let workspace_wrapper = gtk::Box::new(gtk::Orientation::Vertical, 0);
@@ -356,19 +344,15 @@ fn setup_ui(win: &gtk::ApplicationWindow, config: &AppConfig) {
         }
     });
 
+    win.focus();
+
     let key_controller: EventControllerKey = EventControllerKey::new();
+    let key_controller_copy = key_controller.clone();
     let win_copy = win.clone();
 
     let config_clone = config.clone();
 
     key_controller.connect_key_pressed(move |_, key, _, _| {
-        let _ = win_copy
-            .application()
-            .expect("something went horribly wrong")
-            .hold();
-
-        win_copy.set_visible(false);
-
         let success = handle_keypress(
             &assignments,
             &key.name().unwrap(),
@@ -388,6 +372,18 @@ fn setup_ui(win: &gtk::ApplicationWindow, config: &AppConfig) {
 
                 Dispatch::call(DispatchType::ToggleFullscreen(fullscreen_type))
                     .expect("failed to toggle fullscreen");
+            }
+
+            if !win_copy
+                .application()
+                .expect("should have app")
+                .flags()
+                .contains(ApplicationFlags::IS_SERVICE)
+            {
+                win_copy.close();
+            } else {
+                win_copy.remove_controller(&key_controller_copy);
+                win_copy.set_visible(false);
             }
         }
 
@@ -428,6 +424,11 @@ fn setup_window(app: &Application) -> gtk::ApplicationWindow {
     win.set_exclusive_zone(-1);
     win.set_layer(Layer::Overlay);
     win.set_keyboard_mode(KeyboardMode::OnDemand);
+
+    win.set_anchor(Edge::Left, true);
+    win.set_anchor(Edge::Right, true);
+    win.set_anchor(Edge::Top, true);
+    win.set_anchor(Edge::Bottom, true);
 
     return win;
 }
