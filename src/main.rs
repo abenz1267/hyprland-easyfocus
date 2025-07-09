@@ -217,7 +217,7 @@ fn setup_ui(app: &Application) {
     win.set_namespace("hyprland-easyfocus");
     win.set_exclusive_zone(-1);
     win.set_layer(Layer::Overlay);
-    win.set_keyboard_mode(KeyboardMode::Exclusive);
+    win.set_keyboard_mode(KeyboardMode::OnDemand);
 
     let anchors = [
         (Edge::Left, true),
